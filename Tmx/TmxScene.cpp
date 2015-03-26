@@ -2,19 +2,13 @@
 using namespace hb;
 
 
-TmxScene::TmxScene(const std::string& file_name):
-Game::Scene("", [](){}),
-m_filename(file_name)
+TmxScene::TmxScene(const std::string& scene_name, const std::string& file_name):
+Game::Scene(scene_name, [](){})
 {
-	int last_slash = file_name.find_last_of("/");
-	int last_dot = file_name.find_last_of(".");
-	m_name = file_name.substr(last_slash + 1, file_name.size() - last_dot);
-	std::string path = file_name.substr(0, last_slash +1);
-
-	m_init = [this, path]()
+	m_init = [this, file_name]()
 	{
 		Tmx::Map* map = new Tmx::Map();
-		map->ParseFile(m_filename);
+		map->ParseFile(file_name);
 		if (map->HasError())
 		{
 			printf("error code: %d\n", map->GetErrorCode());
@@ -24,8 +18,12 @@ m_filename(file_name)
 
 			::exit(map->GetErrorCode());
 		}
+
+		int last_slash = file_name.find_last_of("/");
+		std::string path = file_name.substr(0, last_slash +1);
+
 		Renderer::getWindow().setSize(sf::Vector2u(map->GetWidth() * map->GetTileWidth(), map->GetHeight() * map->GetTileHeight()));
-		Renderer::getCamera().setPosition(Vector2d(map->GetWidth()/4., map->GetHeight()/4.));
+		Renderer::getCamera().setPosition(Vector2d(map->GetWidth()/2., map->GetHeight()/2.));
 		Renderer::getWindow().setView(sf::View(sf::FloatRect(0, 0, map->GetWidth() * map->GetTileWidth(), map->GetHeight() * map->GetTileHeight())));
 
 		if (map->GetOrientation() == Tmx::TMX_MO_ORTHOGONAL)
@@ -54,19 +52,14 @@ m_filename(file_name)
 					const Tmx::Tileset *tileset = map->FindTileset(gid);
 					int lid = gid - tileset->GetFirstGid();
 					std::vector<int> anim;
-					Time t_anim = Time::seconds(1);
+					Time t_anim = Time::seconds(0);
 					const Tmx::Tile* tile = tileset->GetTile(lid);
-					if (tile->GetProperties().HasProperty("animation"))
+					if (tile->IsAnimated())
 					{
-						std::stringstream ss;
-						ss << tile->GetProperties().GetStringProperty("animation");
-						int f;
-						while(ss >> f)
-							anim.push_back(f);
-
-						if (tile->GetProperties().HasProperty("time"))
+						t_anim = Time::milliseconds(tile->GetTotalDuration() / tile->GetFrameCount());
+						for (auto anim_frame : tile->GetFrames())
 						{
-							t_anim = Time::miliseconds(tile->GetProperties().GetIntProperty("time"));
+							anim.push_back(anim_frame.GetTileID());
 						}
 					}
 					else
@@ -87,6 +80,7 @@ m_filename(file_name)
 		for (int i = 0; i < map->GetNumObjectGroups(); ++i)
 		{
 			const Tmx::ObjectGroup* obj_grp = map->GetObjectGroup(i);
+			if (not obj_grp->IsVisible()) continue;
 			for (int j = 0; j < obj_grp->GetNumObjects(); ++j)
 			{
 				TmxObjectTypeFactory::makeObject(map, i, j);
