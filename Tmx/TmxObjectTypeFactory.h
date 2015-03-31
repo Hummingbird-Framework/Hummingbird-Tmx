@@ -6,11 +6,18 @@
 #include <unordered_map>
 #include <map>
 #include <tmxparser/Tmx.h>
+#include "../Core/GameObject.h"
+#include "../SFML/ClickableComponent.h"
+#include "TmxVersion.h"
 
 namespace hb
 {
-	typedef void(*GameObjectFactory)(const Tmx::Map*, int, int);
-	typedef std::function<void(const Tmx::Map*, int, int)> lambdaFactory;
+	/**
+	 * \addtogroup tmx
+	 * @{
+	 */
+	typedef void(*GameObjectFactory)(GameObject*, const Tmx::Map*, int, int);
+	typedef std::function<void(GameObject*, const Tmx::Map*, int, int)> lambdaFactory;
 	class TmxObjectTypeFactory
 	{
 	public:
@@ -33,5 +40,6 @@ namespace hb
 	{
 		TmxObjectTypeFactory::registerFactory(type, std::move(factory));
 	}
+	//! @}
 }
 #endif
